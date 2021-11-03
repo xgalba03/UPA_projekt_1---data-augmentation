@@ -65,10 +65,7 @@ def total_population():
 
     data = pd.read_csv('https://www.czso.cz/documents/62353418/143522504/130142-21data043021.csv/760fab9c-d079-4d3a-afed-59cbb639e37d?version=1.1')
     csv_insert_to_db(data.to_dict('records'), collection)
-    #collection.insert_many(data.to_dict('records'))
-    print("==========completed==========")
-
-    
+    print("==========completed==========")    
 
 
 def fix_date_item(item):
@@ -85,11 +82,12 @@ def insert_to_db(iterable, collection, chunk=100000):
     index = 0
     for item in iterable:
         if index % chunk == 1:
-            print(index)
+            #print(index)
             collection.insert_many(people_chunk)
             people_chunk.clear()
         fix_date_item(item)
         people_chunk.append(item)
+        index += 1
 
     collection.insert_many(people_chunk)
 
@@ -98,19 +96,20 @@ def csv_insert_to_db(iterable, collection, chunk=100000):
     index = 0
     for item in iterable:
         if index % chunk == 1:
-            print(index)
+            #print(index)
             collection.insert_many(people_chunk)
             people_chunk.clear()
         fix_csv_date_item(item)
         people_chunk.append(item)
+        index += 1
 
     collection.insert_many(people_chunk)
 
 
 if __name__ == '__main__':
-    #monthly_stats()
-    #people_region_infected_stats()
-    #people_vaccinated_region_stats()
-    #people_vaccinated_all()
+    monthly_stats()
+    people_region_infected_stats()
+    people_vaccinated_region_stats()
+    people_vaccinated_all()
     total_population()
 
