@@ -1,6 +1,6 @@
 import datetime
 from urllib.request import urlopen
-
+import pandas as pd
 import ijson
 import pymongo.collection
 from pymongo import MongoClient
@@ -58,6 +58,17 @@ def people_vaccinated_all():
     insert_to_db(people, collection)
     print("==========completed==========")
 
+def total_population():
+    print("==========total population==========")
+    collection: pymongo.collection.Collection = client.upa.totalPopulation
+    collection.delete_many({})
+
+    data = pd.read_csv('https://www.czso.cz/documents/62353418/143522504/130142-21data043021.csv/760fab9c-d079-4d3a-afed-59cbb639e37d?version=1.1')
+    collection.insert_many(data.to_dict('records'))
+    print("==========completed==========")
+
+    
+
 
 def fix_date_item(item):
     date = datetime.date.fromisoformat(item["datum"])
@@ -79,7 +90,9 @@ def insert_to_db(iterable, collection, chunk=100000):
 
 
 if __name__ == '__main__':
-    monthly_stats()
-    people_region_infected_stats()
-    people_vaccinated_region_stats()
-    people_vaccinated_all()
+    #monthly_stats()
+    #people_region_infected_stats()
+    #people_vaccinated_region_stats()
+    #people_vaccinated_all()
+    total_population()
+
