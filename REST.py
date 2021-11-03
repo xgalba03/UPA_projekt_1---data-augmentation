@@ -64,7 +64,8 @@ def total_population():
     collection.delete_many({})
 
     data = pd.read_csv('https://www.czso.cz/documents/62353418/143522504/130142-21data043021.csv/760fab9c-d079-4d3a-afed-59cbb639e37d?version=1.1')
-    collection.insert_many(data.to_dict('records'))
+    csv_insert_to_db(data.to_dict('records'), collection)
+    #collection.insert_many(data.to_dict('records'))
     print("==========completed==========")
 
     
@@ -73,6 +74,10 @@ def total_population():
 def fix_date_item(item):
     date = datetime.date.fromisoformat(item["datum"])
     item["datum"] = datetime.datetime(date.year, date.month, date.day)
+
+def fix_csv_date_item(item):
+    date = datetime.date.fromisoformat(item["casref_do"])
+    item["casref_do"] = datetime.datetime(date.year, date.month, date.day)
 
 
 def insert_to_db(iterable, collection, chunk=100000):
@@ -84,6 +89,19 @@ def insert_to_db(iterable, collection, chunk=100000):
             collection.insert_many(people_chunk)
             people_chunk.clear()
         fix_date_item(item)
+        people_chunk.append(item)
+
+    collection.insert_many(people_chunk)
+
+def csv_insert_to_db(iterable, collection, chunk=100000):
+    people_chunk = []
+    index = 0
+    for item in iterable:
+        if index % chunk == 1:
+            print(index)
+            collection.insert_many(people_chunk)
+            people_chunk.clear()
+        fix_csv_date_item(item)
         people_chunk.append(item)
 
     collection.insert_many(people_chunk)
