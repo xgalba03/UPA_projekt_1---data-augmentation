@@ -1,14 +1,14 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pymongo.collection
 import pandas as pd
-import matplotlib.dates as mdates
 
 from pymongo import MongoClient
 
 client = MongoClient("localhost", 27017)
 
 
-def aggregate_months():
+def read_month_stats():
     collection: pymongo.collection.Collection = client.upa.monthlyStats
     aggregation = collection.aggregate(
         [
@@ -46,34 +46,30 @@ def aggregate_months():
         ]
     )
     df = pd.DataFrame(list(aggregation))
-    csv = df.to_csv()
-    f = open("csv/monthly_stats.csv", "w")
-    f.write(csv)
+    df.to_csv("csv/monthly_stats.csv", index=False)
 
 
 def plot_monthly_stats():
     data = pd.read_csv("csv/monthly_stats.csv")
-    x = [f"{row['month']}.{row['year']}" for i, row in data[["month", "year"]].iterrows()] #Todo: nastavit popisky x osy
-    data.plot(
-        x_compat=True,
-        figsize=(10, 20),
+    x = [f"{row['month']}.{row['year']}" for i, row in
+         data[["month", "year"]].iterrows()]
+
+    data.index = x  # set index values as month.date string values
+    axs = data.plot(
+        figsize=(8, 10),
         grid=True,
         y=["prirustkovy_pocet_ag_testu",
            "prirustkovy_pocet_nakazenych",
            "prirustkovy_pocet_provedenych_testu",
            "prirustkovy_pocet_umrti",
            "prirustkovy_pocet_vylecenych"],
-        subplots=True
+        subplots=True,
     )
+
+    for ax in axs:
+        ax.set_xlabel("Datum")
+        ax.set_ylabel("Počet")
     plt.tight_layout()
-    plt.show()
-
-
-def plot_line(date, value, label):
-    plt.plot(date, value)
-    plt.title(label)
-    plt.xticks(rotation=45)
-    plt.grid()
     plt.show()
 
 
@@ -119,13 +115,152 @@ def read_infected_age_in_regions():
     )
 
     obj = pd.DataFrame(list(aggregation))
-    csv = obj.to_csv()
-    f = open("csv/infected_age_in_region.csv", "w")
-    f.write(csv)
-    f.close()
+    obj.to_csv("csv/infected_age_in_region.csv", index=False)
+
+
+def get_region_count_data():
+    # data from: https://www.czso.cz/csu/czso/porovnani-kraju section Demografie
+    # Get region count data from csv file
+    region_count = pd.read_csv("data/ukazatele_kraje_demogr.csv").replace(
+        to_replace={"2020": {",": ""}}
+    )
+    region_count.set_index("NUTS 3")
+    for index in region_count.index:
+        region_count["2020"][index] = int(region_count["2020"][index].replace(",", ""))
+    return region_count
+
+
+def read_infected_by_date_region():
+    region_count = get_region_count_data()
+
+    collection: pymongo.collection.Collection = client.upa.peopleRegionInfected
+    aggregation = collection.aggregate(
+        [
+            {
+                "$match": {
+                    "kraj_nuts_kod": {"$ne": None},
+                    "vek": {"$ne": None}
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "year": {"$year": "$datum"},
+                        "month": {"$month": "$datum"},
+                        "kraj": "$kraj_nuts_kod",
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$project": {
+                    "year": "$_id.year",
+                    "month": "$_id.month",
+                    "kraj": "$_id.kraj",
+                    "count": 1,
+                    "_id": 0
+                }
+            }
+        ]
+    )
+    data = pd.DataFrame(list(aggregation))
+
+    data["quarter"] = np.ceil((data["month"] / 4)).astype(int)  # compute year quarter
+
+    # Join region count data and infected data
+    merged_data = pd.merge(data, region_count, how="left", left_on="kraj", right_on="NUTS 3")
+
+    merged_data = merged_data[
+        ["count", "year", "month", "quarter", "kraj", "Název kraje", "2020"]]  # Keep only needed columns
+    merged_data = merged_data.rename(columns={"count": "nakazenych", "2020": "celkovy pocet"})  # Rename columns
+
+    merged_data.to_csv("csv/infected_region.csv", index=False)
+
+
+def plot_infected_in_region_age():
+    region_data = get_region_count_data()[["Název kraje", "NUTS 3"]]
+    data = pd.read_csv("csv/infected_age_in_region.csv")
+
+    data = pd.merge(data, region_data, how="left", left_on="kraj", right_on="NUTS 3")
+
+    df = data.loc[data.index.repeat(data["count"])]  # Multiply age rows by count column
+    df = df.drop(columns="count")  # Drop redundant count column
+    ax = df.boxplot(by="Název kraje")  # Boxplot grouped by kraj column
+
+    ax.set_xlabel("Kraj")
+    ax.set_ylabel("Vek")
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.show()
+
+
+def get_quarter(quarter, year) -> pd.DataFrame:
+    """
+    Gets regional covid data for quarter
+    :param quarter: year quarter. Should be value from 1 to 3
+    :param year: year for which to get data
+    :return: Data frame with quarter covid data
+    """
+    data = pd.read_csv("csv/infected_region.csv")
+    quarters = data.groupby(["year", "quarter", "kraj"]).agg(
+        {"nakazenych": "sum", "Název kraje": "first", "celkovy pocet": "first"}
+    )  # group by quarters and sum infected count
+    quarters["infected/person"] = np.divide(quarters["nakazenych"], quarters["celkovy pocet"])
+    quarters = quarters.reset_index()  # reset multi index from group by
+
+    return quarters.loc[(quarters["quarter"] == quarter) & (quarters["year"] == year)]
+
+
+def print_quarter_rating(quarter, year):
+    """
+    Prints sorted regional covid data
+    :param quarter: year quarter. Should be value from 1 to 3
+    :param year: year for which to print data
+    """
+    quarter_data = get_quarter(quarter, year)
+    sorted_quarter = quarter_data.sort_values(by=["infected/person"], ascending=False)
+    data_for_print = sorted_quarter.filter(items=["Název kraje", "infected", "infected/person"]).reset_index(drop=True)
+    data_for_print.rename({"infected/person": "infikovaných na jednu osobu"})
+    data_for_print.index += 1
+    print(f"{'=' * 15} {quarter}. čtvrtletí {year} {'=' * 15}")
+    print(data_for_print)
+
+
+def print_best_in_covid():
+    """
+    Prints covid region rating for 4 quarters
+    """
+    print_quarter_rating(3, 2021)
+    print()
+    print_quarter_rating(2, 2021)
+    print()
+    print_quarter_rating(1, 2021)
+    print()
+    print_quarter_rating(3, 2020)
+
+
+def plot_quarter(quarter, year):
+    """
+    Plots single quarter covid data into bar chart
+    :param quarter: quarter number should be in range from 1 to 3
+    :param year: year
+    """
+    quarter_data = get_quarter(quarter, year)
+    quarter_data = quarter_data.set_index("Název kraje", drop=True)
+    quarter_data.rename(columns={"infected/person": "Infikovaných na jednu osobu"})
+
+    ax = quarter_data.plot(figsize=(8,10), kind="bar", y=["nakazenych", "celkovy pocet"], )
+    quarter_data.plot(y=["infected/person"], ax=ax, logy=True, color="k")
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == '__main__':
-    # read_infected_age_in_regions()
-    aggregate_months()
+    read_infected_age_in_regions()
+    read_infected_by_date_region()
+    read_month_stats()
     plot_monthly_stats()
+    plot_infected_in_region_age()
+    print_best_in_covid()
+    plot_quarter(3, 2020)
