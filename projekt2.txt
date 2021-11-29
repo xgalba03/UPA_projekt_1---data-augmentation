@@ -1,0 +1,16 @@
+Dotazy:
+A - prvni, druhy,
+B - prvni
+C - chybi jeden
+
+Zadanie 2 časti
+1. hotova
+2. chybi
+3. hotova - davat pozor aby sa ukladalo/tahalo z csv souboru
+4. hotovo
+5. nemame, to je dokumentace
+6. nemame
+7 je odovzdanie
+
+potrebne:
+https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/obce.csv
