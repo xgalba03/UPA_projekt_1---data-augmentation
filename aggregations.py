@@ -344,7 +344,7 @@ def plot_region_vaccinate_percentage():
     ax = data.plot(figsize=(8, 10), kind="bar", y="vaccinated percentage")
     plt.xticks(rotation=90)
     ax.set_ylabel("Procento očkovaných lidí")
-    plt.title("Procentualni počet infikovanych v krajích")
+    plt.title("Procentualni počet očkovaných v krajích")
     plt.tight_layout()
     plt.show()
 
