@@ -80,8 +80,8 @@ def read_vaccinated_in_region():
             }
         ]
     )
-    df = pd.DataFrame(list(aggregation), index=False)
-    df.to_csv("csv/vaccinated_in_region.csv")
+    df = pd.DataFrame(list(aggregation))
+    df.to_csv("csv/vaccinated_in_region.csv", index=False)
 
 
 def plot_monthly_stats():
