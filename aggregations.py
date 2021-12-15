@@ -8,6 +8,43 @@ from pymongo import MongoClient
 client = MongoClient("localhost", 27017)
 
 
+def read_infected_age_and_sex():
+    collection: pymongo.collection.Collection = client.upa.peopleRegionInfected
+    aggregation = collection.aggregate(
+        [
+            {
+                "$match": {
+                    "vek": {"$ne": None}
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "vek": "$vek",
+                        "pohlavi": "$pohlavi"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$project": {
+                    "vek": "$_id.vek",
+                    "pohlavi": "$_id.pohlavi",
+                    "count": 1
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0
+                }
+            }
+        ]
+
+    )
+    df = pd.DataFrame(list(aggregation))
+    df.to_csv("csv/infected_age_sex.csv", index=False)
+
+
 def read_used_vaccines_in_regions():
     collection: pymongo.collection.Collection = client.upa.peopleVaccinated
     aggregation = collection.aggregate(
@@ -244,6 +281,20 @@ def read_infected_by_date_region():
     merged_data.to_csv("csv/infected_region.csv", index=False)
 
 
+def plot_age_sex():
+    data = pd.read_csv("csv/infected_age_sex.csv")
+    df = data.loc[data.index.repeat(data["count"])]
+    df = df.drop(columns="count")
+    ax = df.boxplot(figsize=(8, 10), by="pohlavi")
+    ax.set_ylabel("Vek")
+    ax.set_xlabel("Pohlaví")
+
+    plt.title("Rozložení věku infikovaných v rámci pohlaví ")
+    plt.suptitle("")
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_infected_in_region_age():
     region_data = get_region_count_data()[["Název kraje", "NUTS 3"]]
     data = pd.read_csv("csv/infected_age_in_region.csv")
@@ -363,6 +414,7 @@ def plot_used_vaccines_in_regions():
 
 
 if __name__ == '__main__':
+    read_infected_age_and_sex()
     read_used_vaccines_in_regions()
     read_vaccinated_in_region()
     read_vaccinated_in_region()
@@ -375,3 +427,4 @@ if __name__ == '__main__':
     plot_quarter(3, 2020)
     plot_region_vaccinate_percentage()
     plot_used_vaccines_in_regions()
+    plot_age_sex()
