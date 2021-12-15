@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pymongo.collection
 import pandas as pd
+from pandas.plotting import table
 
 from pymongo import MongoClient
 
@@ -69,6 +70,7 @@ def plot_monthly_stats():
     for ax in axs:
         ax.set_xlabel("Datum")
         ax.set_ylabel("Počet")
+    plt.suptitle("Měsíční statistiky epidemie COVID-19")
     plt.tight_layout()
     plt.show()
 
@@ -165,7 +167,7 @@ def read_infected_by_date_region():
     )
     data = pd.DataFrame(list(aggregation))
 
-    data["quarter"] = np.ceil((data["month"] / 4)).astype(int)  # compute year quarter
+    data["quarter"] = ((data["month"] - 1) // 3 + 1)  # compute year quarter
 
     # Join region count data and infected data
     merged_data = pd.merge(data, region_count, how="left", left_on="kraj", right_on="NUTS 3")
@@ -185,11 +187,13 @@ def plot_infected_in_region_age():
 
     df = data.loc[data.index.repeat(data["count"])]  # Multiply age rows by count column
     df = df.drop(columns="count")  # Drop redundant count column
-    ax = df.boxplot(by="Název kraje")  # Boxplot grouped by kraj column
+    ax = df.boxplot(by="Název kraje",)  # Boxplot grouped by kraj column
 
     ax.set_xlabel("Kraj")
     ax.set_ylabel("Vek")
     plt.xticks(rotation=90)
+    plt.title("Rozložení věku infikovaných v krajích")
+    plt.suptitle("")
     plt.tight_layout()
     plt.show()
 
@@ -249,9 +253,13 @@ def plot_quarter(quarter, year):
     quarter_data = quarter_data.set_index("Název kraje", drop=True)
     quarter_data.rename(columns={"infected/person": "Infikovaných na jednu osobu"})
 
-    ax = quarter_data.plot(figsize=(8,10), kind="bar", y=["nakazenych", "celkovy pocet"], )
-    quarter_data.plot(y=["infected/person"], ax=ax, logy=True, color="k")
+    ax = quarter_data.plot(figsize=(8, 10), kind="bar", logy = True, y=["nakazenych", "celkovy pocet"], )
+    ax.set_ylabel("Počet lidí")
+    ax1 = ax.twinx()
+    ax1.set_ylabel("Počet infikovaných na osobu")
+    quarter_data.plot(y=["infected/person"], ax=ax1, color="k")
     plt.xticks(rotation=90)
+    plt.title("Čtvrtlení statistika infikovaných v krajích")
     plt.tight_layout()
     plt.show()
 
