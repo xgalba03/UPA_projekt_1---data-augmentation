@@ -84,6 +84,30 @@ def read_vaccinated_in_district():
     data.to_csv("csv/vaccinated_in_district.csv", index=True)
 
 
+def vekova_skupina(row: pd.Series):
+    if row["MAX_TUPY"] <= 15:
+        return "0-14"
+    elif row["MIN_OSTRY"] >= 15 and row["MAX_TUPY"] <= 60:
+        return "15-59"
+    elif row["MIN_OSTRY"] >= 60:
+        return "60+"
+
+
+def read_resident_age():
+    data = pd.read_csv("data/rozlozeni-veku-obyvatel.csv")
+    orp_map = pd.read_csv("data/orp-lau.csv")
+    interval_ciselnik = pd.read_csv("data/ciselnik-intervalu.csv")
+    data = pd.merge(data, orp_map, how="left", left_on="vuzemi_kod", right_on="ORP")
+    data = data.groupby(["LAU1", "pohlavi_kod", "vek_kod"])["hodnota"].sum().reset_index()
+    data = pd.merge(data, interval_ciselnik, how="left", left_on="vek_kod", right_on="CHODNOTA")
+    data = data.filter(["LAU1", "pohlavi_kod", "vek_kod", "hodnota", "ZKRTEXT", "TEXT", "MAX_TUPY", "MIN_OSTRY"])
+
+    data["vekova_skupina"] = data.apply(vekova_skupina, axis=1)
+    data = data.groupby(["vekova_skupina", "LAU1"])["hodnota"].sum().reset_index()
+    data = pd.pivot_table(data, values="hodnota", index="LAU1", columns="vekova_skupina", aggfunc=np.sum)
+    data.to_csv("csv/district_age_distribution.csv")
+
+
 def read_infected_age_and_sex():
     collection: pymongo.collection.Collection = client.upa.peopleRegionInfected
     aggregation = collection.aggregate(
@@ -119,6 +143,23 @@ def read_infected_age_and_sex():
     )
     df = pd.DataFrame(list(aggregation))
     df.to_csv("csv/infected_age_sex.csv", index=False)
+
+
+def combine_district_values():
+    vaccination = pd.read_csv("csv/vaccinated_in_district.csv")
+    vaccination.rename(columns={"count": "vaccination_count"})
+    infected = pd.read_csv("csv/infected_in_district.csv")
+    infected.rename(columns={"count": "infected_count"})
+    age_distribution = pd.read_csv("csv/district_age_distribution.csv")
+    district_names = pd.read_csv("data/ciselnik-okresu.csv")
+    district_names = district_names.filter(["CHODNOTA", "TEXT"])
+    district_names = district_names.rename(columns={"TEXT": "název"})
+
+    data = pd.merge(vaccination, infected, how="left", left_on="LAU1", right_on="okres_lau_kod")
+    data = data.merge(age_distribution, how="left", left_on="LAU1", right_on="LAU1")
+    data = data.merge(district_names, how="left", left_on="LAU1", right_on="CHODNOTA")
+    data = data.drop(["okres_lau_kod", "CHODNOTA"], axis=1)
+    data.to_csv("csv/combined_district_data.csv", index=False)
 
 
 def read_used_vaccines_in_regions():
@@ -490,8 +531,10 @@ def plot_used_vaccines_in_regions():
 
 
 if __name__ == '__main__':
+    combine_district_values()
+    # read_resident_age()
     # read_infected_in_district()
-    read_vaccinated_in_district()
+    # read_vaccinated_in_district()
     # read_infected_age_and_sex()
     # read_used_vaccines_in_regions()
     # read_vaccinated_in_region()
