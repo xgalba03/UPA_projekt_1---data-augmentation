@@ -93,7 +93,7 @@ def vekova_skupina(row: pd.Series):
         return "60+"
 
 
-def read_resident_age():
+def read_resident_district_age():
     data = pd.read_csv("data/rozlozeni-veku-obyvatel.csv")
     orp_map = pd.read_csv("data/orp-lau.csv")
     interval_ciselnik = pd.read_csv("data/ciselnik-intervalu.csv")
@@ -531,21 +531,21 @@ def plot_used_vaccines_in_regions():
 
 
 if __name__ == '__main__':
+    read_resident_district_age()
+    read_infected_in_district()
+    read_vaccinated_in_district()
     combine_district_values()
-    # read_resident_age()
-    # read_infected_in_district()
-    # read_vaccinated_in_district()
-    # read_infected_age_and_sex()
-    # read_used_vaccines_in_regions()
-    # read_vaccinated_in_region()
-    # read_vaccinated_in_region()
-    # read_infected_age_in_regions()
-    # read_infected_by_date_region()
-    # read_month_stats()
-    # plot_monthly_stats()
-    # plot_infected_in_region_age()
-    # print_best_in_covid()
-    # plot_quarter(3, 2020)
-    # plot_region_vaccinate_percentage()
-    # plot_used_vaccines_in_regions()
-    # plot_age_sex()
+    read_infected_age_and_sex()
+    read_used_vaccines_in_regions()
+    read_vaccinated_in_region()
+    read_vaccinated_in_region()
+    read_infected_age_in_regions()
+    read_infected_by_date_region()
+    read_month_stats()
+    plot_monthly_stats()
+    plot_infected_in_region_age()
+    print_best_in_covid()
+    plot_quarter(3, 2020)
+    plot_region_vaccinate_percentage()
+    plot_used_vaccines_in_regions()
+    plot_age_sex()
