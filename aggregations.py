@@ -8,6 +8,37 @@ from pymongo import MongoClient
 client = MongoClient("localhost", 27017)
 
 
+def read_used_vaccines_in_regions():
+    collection: pymongo.collection.Collection = client.upa.peopleVaccinated
+    aggregation = collection.aggregate(
+        [
+            {
+                "$group": {
+                    "_id": {
+                        "kraj_nuts": "$kraj_nuts_kod",
+                        "vakcina": "$vakcina"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$project": {
+                    "kraj_nuts": "$_id.kraj_nuts",
+                    "vakcina": "$_id.vakcina",
+                    "count": 1
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0
+                }
+            }
+        ]
+    )
+    df = pd.DataFrame(list(aggregation))
+    df.to_csv("csv/used_vaccines_in_region.csv", index=False)
+
+
 def read_month_stats():
     collection: pymongo.collection.Collection = client.upa.monthlyStats
     aggregation = collection.aggregate(
@@ -298,12 +329,17 @@ def plot_quarter(quarter, year):
     plt.show()
 
 
-def plot_region_vaccinate_percentage():
+def get_region_vaccinate_percentage() -> pd.DataFrame:
     region_count = get_region_count_data()[["NUTS 3", "Název kraje", "2020"]]
     vaccination = pd.read_csv("csv/vaccinated_in_region.csv")
     data = pd.merge(vaccination, region_count, how="left", left_on="kraj_nuts", right_on="NUTS 3")
     data["vaccinated percentage"] = (data["vaccinated"] / data["2020"]) * 100
     data = data.set_index("Název kraje", drop=True)
+    return data
+
+
+def plot_region_vaccinate_percentage():
+    data = get_region_vaccinate_percentage()
 
     ax = data.plot(figsize=(8, 10), kind="bar", y="vaccinated percentage")
     plt.xticks(rotation=90)
@@ -313,7 +349,21 @@ def plot_region_vaccinate_percentage():
     plt.show()
 
 
+def plot_used_vaccines_in_regions():
+    region_count = get_region_count_data()[["NUTS 3", "Název kraje"]]
+    data = pd.read_csv("csv/used_vaccines_in_region.csv")
+    data = pd.merge(data, region_count, how="left", left_on="kraj_nuts", right_on="NUTS 3")
+    data = data.set_index("Název kraje")
+
+    data = pd.pivot_table(data, values="count", index="Název kraje", columns="vakcina", aggfunc=np.sum)
+    ax = data.plot(figsize=(10, 8), kind="bar", logy=True)
+    ax.set_ylabel("Počet očkování")
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
+    read_used_vaccines_in_regions()
     read_vaccinated_in_region()
     read_vaccinated_in_region()
     read_infected_age_in_regions()
@@ -324,3 +374,4 @@ if __name__ == '__main__':
     print_best_in_covid()
     plot_quarter(3, 2020)
     plot_region_vaccinate_percentage()
+    plot_used_vaccines_in_regions()
