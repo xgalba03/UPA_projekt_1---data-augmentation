@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pymongo.collection
 import pandas as pd
-from pandas.plotting import table
 
 from pymongo import MongoClient
 
@@ -48,6 +47,41 @@ def read_month_stats():
     )
     df = pd.DataFrame(list(aggregation))
     df.to_csv("csv/monthly_stats.csv", index=False)
+
+
+def read_vaccinated_in_region():
+    collection: pymongo.collection.Collection = client.upa.peopleVaccinated
+    aggregation = collection.aggregate(
+        [
+            {
+                "$match": {
+                    "kraj_nuts_kod": {"$ne": None},
+                    "ukoncujici_davka": True
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "kraj_nuts_kod": "$kraj_nuts_kod"
+                    },
+                    "vaccinated": {"$sum": 1}
+                }
+            },
+            {
+                "$project": {
+                    "kraj_nuts": "$_id.kraj_nuts_kod",
+                    "vaccinated": 1
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0
+                }
+            }
+        ]
+    )
+    df = pd.DataFrame(list(aggregation), index=False)
+    df.to_csv("csv/vaccinated_in_region.csv")
 
 
 def plot_monthly_stats():
@@ -187,7 +221,7 @@ def plot_infected_in_region_age():
 
     df = data.loc[data.index.repeat(data["count"])]  # Multiply age rows by count column
     df = df.drop(columns="count")  # Drop redundant count column
-    ax = df.boxplot(by="Název kraje",)  # Boxplot grouped by kraj column
+    ax = df.boxplot(by="Název kraje", )  # Boxplot grouped by kraj column
 
     ax.set_xlabel("Kraj")
     ax.set_ylabel("Vek")
@@ -253,7 +287,7 @@ def plot_quarter(quarter, year):
     quarter_data = quarter_data.set_index("Název kraje", drop=True)
     quarter_data.rename(columns={"infected/person": "Infikovaných na jednu osobu"})
 
-    ax = quarter_data.plot(figsize=(8, 10), kind="bar", logy = True, y=["nakazenych", "celkovy pocet"], )
+    ax = quarter_data.plot(figsize=(8, 10), kind="bar", logy=True, y=["nakazenych", "celkovy pocet"], )
     ax.set_ylabel("Počet lidí")
     ax1 = ax.twinx()
     ax1.set_ylabel("Počet infikovaných na osobu")
@@ -264,7 +298,24 @@ def plot_quarter(quarter, year):
     plt.show()
 
 
+def plot_region_vaccinate_percentage():
+    region_count = get_region_count_data()[["NUTS 3", "Název kraje", "2020"]]
+    vaccination = pd.read_csv("csv/vaccinated_in_region.csv")
+    data = pd.merge(vaccination, region_count, how="left", left_on="kraj_nuts", right_on="NUTS 3")
+    data["vaccinated percentage"] = (data["vaccinated"] / data["2020"]) * 100
+    data = data.set_index("Název kraje", drop=True)
+
+    ax = data.plot(figsize=(8, 10), kind="bar", y="vaccinated percentage")
+    plt.xticks(rotation=90)
+    ax.set_ylabel("Procento očkovaných lidí")
+    plt.title("Procentualni počet infikovanych v krajích")
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
+    read_vaccinated_in_region()
+    read_vaccinated_in_region()
     read_infected_age_in_regions()
     read_infected_by_date_region()
     read_month_stats()
@@ -272,3 +323,4 @@ if __name__ == '__main__':
     plot_infected_in_region_age()
     print_best_in_covid()
     plot_quarter(3, 2020)
+    plot_region_vaccinate_percentage()
