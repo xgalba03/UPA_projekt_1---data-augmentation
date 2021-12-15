@@ -1,3 +1,5 @@
+import datetime
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pymongo.collection
@@ -6,6 +8,80 @@ import pandas as pd
 from pymongo import MongoClient
 
 client = MongoClient("localhost", 27017)
+
+
+def read_infected_in_district():
+    collection: pymongo.collection.Collection = client.upa.peopleRegionInfected
+    aggregation = collection.aggregate(
+        [
+            {
+                "$match": {
+                    "datum": {"$gt": datetime.datetime(2021, 1, 1)},
+                    "okres_lau_kod": {"$ne": None}
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "okres_lau_kod": "$okres_lau_kod"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$project": {
+                    "okres_lau_kod": "$_id.okres_lau_kod",
+                    "count": 1
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0
+                }
+            }
+        ]
+
+    )
+    df = pd.DataFrame(list(aggregation))
+    df.to_csv("csv/infected_in_district.csv", index=False)
+
+
+def read_vaccinated_in_district():
+    collection: pymongo.collection.Collection = client.upa.peopleVaccinated
+    aggregation = collection.aggregate([
+        {
+            "$match": {
+                "datum": {"$gt": datetime.datetime(2021, 1, 1)},
+                "ukoncujici_davka": True,
+                "orp_bydliste_kod": {"$ne": None}
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "orp_bydliste_kod": "$orp_bydliste_kod"
+                },
+                "count": {"$sum": 1}
+            }
+        },
+        {
+            "$project": {
+                "orp_bydliste_kod": {"$toInt": "$_id.orp_bydliste_kod"},
+                "count": {"$toInt": "$count"}
+            }
+        },
+        {
+            "$project": {
+                "_id": 0
+            }
+        }
+    ])
+    district = pd.read_csv("data/orp-lau.csv")
+    df = pd.DataFrame(list(aggregation))
+    data = pd.merge(df, district, how="left", left_on="orp_bydliste_kod", right_on="ORP")
+    data = data.groupby(["LAU1"]).sum()
+    data = data.filter(["LAU1", "count"])
+    data.to_csv("csv/vaccinated_in_district.csv", index=True)
 
 
 def read_infected_age_and_sex():
@@ -414,17 +490,19 @@ def plot_used_vaccines_in_regions():
 
 
 if __name__ == '__main__':
-    read_infected_age_and_sex()
-    read_used_vaccines_in_regions()
-    read_vaccinated_in_region()
-    read_vaccinated_in_region()
-    read_infected_age_in_regions()
-    read_infected_by_date_region()
-    read_month_stats()
-    plot_monthly_stats()
-    plot_infected_in_region_age()
-    print_best_in_covid()
-    plot_quarter(3, 2020)
-    plot_region_vaccinate_percentage()
-    plot_used_vaccines_in_regions()
-    plot_age_sex()
+    # read_infected_in_district()
+    read_vaccinated_in_district()
+    # read_infected_age_and_sex()
+    # read_used_vaccines_in_regions()
+    # read_vaccinated_in_region()
+    # read_vaccinated_in_region()
+    # read_infected_age_in_regions()
+    # read_infected_by_date_region()
+    # read_month_stats()
+    # plot_monthly_stats()
+    # plot_infected_in_region_age()
+    # print_best_in_covid()
+    # plot_quarter(3, 2020)
+    # plot_region_vaccinate_percentage()
+    # plot_used_vaccines_in_regions()
+    # plot_age_sex()
