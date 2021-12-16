@@ -199,11 +199,11 @@ def age_distribution():
 
 
 if __name__ == '__main__':
-    # monthly_stats()
-    # people_region_infected_stats()
-    # people_vaccinated_region_stats()
-    # people_vaccinated_all()
-    # total_population()
-    # hospitalized()
-    # age_distribution()
+    monthly_stats()
+    people_region_infected_stats()
+    people_vaccinated_region_stats()
+    people_vaccinated_all()
+    total_population()
+    hospitalized()
+    age_distribution()
     people_vaccinated_all_csv()
