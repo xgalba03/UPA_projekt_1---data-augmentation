@@ -6,9 +6,9 @@ from database_extraction import get_region_count_data
 
 def combine_district_values():
     vaccination = pd.read_csv("csv/vaccinated_in_district.csv")
-    vaccination.rename(columns={"count": "vaccination_count"})
+    vaccination = vaccination.rename(columns={"count": "vaccination_count"})
     infected = pd.read_csv("csv/infected_in_district.csv")
-    infected.rename(columns={"count": "infected_count"})
+    infected = infected.rename(columns={"count": "infected_count"})
     age_distribution = pd.read_csv("csv/district_age_distribution.csv")
     district_names = pd.read_csv("data/ciselnik-okresu.csv")
     district_names = district_names.filter(["CHODNOTA", "TEXT"])
