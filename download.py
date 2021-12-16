@@ -1,7 +1,8 @@
 import contextlib
+import requests
+import csv
 import datetime
 import json
-import urllib
 from urllib.request import urlopen
 import ijson
 import pandas as pd
@@ -69,13 +70,39 @@ def people_vaccinated_all_csv():
     """
 
     collection: pymongo.collection.Collection = client.upa.peopleVaccinated
-    # for chunk in pd.read_csv("data/ockovani-profese.csv", chunksize=100000):
-    with contextlib.closing(urllib.request.urlopen(url="https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/ockovani-profese.csv")) as reader:
-        for chunk in pd.read_csv(reader, chunksize=100000):
-            chunk = chunk.rename(columns={"id": "_id"})
-            chunk["datum"] = pd.to_datetime(chunk["datum"])
-            dict_data = chunk.to_dict("records")
-            collection.insert_many(dict_data)
+
+    header = None
+    with contextlib.closing(requests.get(url="https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/ockovani-profese.csv", stream=True)) as r:
+        f = (line.decode('utf-8') for line in r.iter_lines())
+        reader = csv.reader(f, delimiter=',', quotechar='"')
+
+        for row in reader:
+            i = 0
+            dict = {}
+            if header is None:
+                header = row
+                continue
+
+            for value in header:
+                if value == "id":
+                    dict["_id"] = row[i]
+                elif value == "datum":
+                    date = datetime.date.fromisoformat(row[i])
+                    dict["datum"] = datetime.datetime(date.year, date.month, date.day)
+                elif value == "ukoncujici_davka":
+                    dict[value] = bool(row[i])
+                elif value == "poradi_davky":
+                    dict[value] = int(row[i])
+                elif value == "orp_bydliste_kod":
+                    if row[i] == "":
+                        dict[value] = None
+                    else:
+                        dict[value] = int(row[i])
+                else:
+                    dict[value] = row[i]
+                i+=1
+
+            collection.insert_one(dict)
 
 
 def total_population():
@@ -172,11 +199,11 @@ def age_distribution():
 
 
 if __name__ == '__main__':
-    monthly_stats()
-    people_region_infected_stats()
-    people_vaccinated_region_stats()
+    # monthly_stats()
+    # people_region_infected_stats()
+    # people_vaccinated_region_stats()
     # people_vaccinated_all()
-    total_population()
-    hospitalized()
-    age_distribution()
+    # total_population()
+    # hospitalized()
+    # age_distribution()
     people_vaccinated_all_csv()
