@@ -5,12 +5,6 @@ from scipy import stats
 data = pd.read_csv("csv/combined_district_data.csv")
 
 
-def calculate_percentages():
-    data["infected_percentage"] = data["infected_count"] / (data["0-14"] + data["15-59"] + data["60+"])
-    data["vaccinated_percentage"] = data["vaccination_count"] / (data["0-14"] + data["15-59"] + data["60+"])
-    data["kids_percentage"] = data["0-14"] / (data["0-14"] + data["15-59"] + data["60+"])
-
-
 def min_max_normalization():
     data["normalized_infected_count"] = (data["infected_count"] - data["infected_count"].min()) / (
             data["infected_count"].max() - data["infected_count"].min())
@@ -43,7 +37,6 @@ def csv_export():
 
 
 if __name__ == '__main__':
-    calculate_percentages()
     outliers_detection()
     outliers_replace()
     infected_percent_discretization()

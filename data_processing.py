@@ -18,6 +18,11 @@ def combine_district_values():
     data = data.merge(age_distribution, how="left", left_on="LAU1", right_on="LAU1")
     data = data.merge(district_names, how="left", left_on="LAU1", right_on="CHODNOTA")
     data = data.drop(["okres_lau_kod", "CHODNOTA"], axis=1)
+
+    data["infected_percentage"] = data["infected_count"] / (data["0-14"] + data["15-59"] + data["60+"])
+    data["vaccinated_percentage"] = data["vaccination_count"] / (data["0-14"] + data["15-59"] + data["60+"])
+    data["kids_percentage"] = data["0-14"] / (data["0-14"] + data["15-59"] + data["60+"])
+
     data.to_csv("csv/combined_district_data.csv", index=False)
 
 
