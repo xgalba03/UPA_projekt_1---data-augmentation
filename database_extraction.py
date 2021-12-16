@@ -99,12 +99,15 @@ def read_resident_district_age():
 
     orp_map = pd.read_csv("data/orp-lau.csv")
     data = pd.merge(age, orp_map, how="left", left_on="vuzemi_kod", right_on="ORP")
-    data = data.groupby(["LAU1", "pohlavi_kod", "vek_kod"]).agg({"pocet":"sum", "pohlavi_txt": "first", "vek_txt": "first", "vuzemi_txt": "first", "ZKRTEXT" : "first", "TEXT": "first","MIN_TUPY" : "first", "MAX_TUPY": "first", "MIN_OSTRY": "first", "MAX_OSTRY": "first"}).reset_index()
-    data = data.filter(["LAU1", "pohlavi_kod", "vek_kod", "hodnota", "ZKRTEXT", "TEXT", "MAX_TUPY", "MIN_OSTRY"])
+    data = data.groupby(["LAU1", "pohlavi_kod", "vek_kod"]).agg(
+        {"pocet": "sum", "pohlavi_txt": "first", "vek_txt": "first", "vuzemi_txt": "first", "ZKRTEXT": "first",
+         "TEXT": "first", "MIN_TUPY": "first", "MAX_TUPY": "first", "MIN_OSTRY": "first",
+         "MAX_OSTRY": "first"}).reset_index()
+    data = data.filter(["LAU1", "pohlavi_kod", "vek_kod", "pocet", "ZKRTEXT", "TEXT", "MAX_TUPY", "MIN_OSTRY"])
 
     data["vekova_skupina"] = data.apply(vekova_skupina, axis=1)
     data = data.groupby(["vekova_skupina", "LAU1"])["pocet"].sum().reset_index()
-    data = pd.pivot_table(data, values="hodnota", index="LAU1", columns="vekova_skupina", aggfunc=np.sum)
+    data = pd.pivot_table(data, values="pocet", index="LAU1", columns="vekova_skupina", aggfunc=np.sum)
     data.to_csv("csv/district_age_distribution.csv")
 
 
@@ -385,14 +388,14 @@ def read_infected_by_date_region():
 
 
 if __name__ == '__main__':
-    read_resident_district_age()
-    read_infected_in_district()
-    read_vaccinated_in_district()
-    read_infected_age_and_sex()
-    read_used_vaccines_in_regions()
-    read_vaccinated_in_region()
-    read_vaccinated_in_region()
-    read_infected_age_in_regions()
-    read_infected_by_date_region()
-    read_month_stats()
+    # read_resident_district_age()
+    # read_infected_in_district()
+    # read_vaccinated_in_district()
+    # read_infected_age_and_sex()
+    # read_used_vaccines_in_regions()
+    # read_vaccinated_in_region()
+    # read_vaccinated_in_region()
+    # read_infected_age_in_regions()
+    # read_infected_by_date_region()
+    # read_month_stats()
     read_resident_district_age()
