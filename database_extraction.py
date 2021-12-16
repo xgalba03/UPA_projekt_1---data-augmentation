@@ -212,6 +212,34 @@ def read_month_stats():
         ]
     )
     df = pd.DataFrame(list(aggregation))
+
+    collection_hospitalized: pymongo.collection.Collection = client.upa.hospitalized
+    hospitalized = collection_hospitalized.aggregate(
+        [
+            {
+                "$group": {
+                    "_id": {
+                        "year": {"$year": "$datum"},
+                        "month": {"$month": "$datum"}
+                    },
+                    "hospitalizace": {"$sum": "$pocet_hosp"}
+                }
+            },
+            {
+                "$project": {
+                    "month": "$_id.month",
+                    "year": "$_id.year",
+                    "hospitalizace": 1
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0
+                }
+            }
+        ])
+    hospitalized_df = pd.DataFrame(list(hospitalized))
+    df = df.merge(hospitalized_df, left_on=["month", "year"], right_on=["month", "year"])
     df.to_csv("csv/monthly_stats.csv", index=False)
 
 
@@ -355,13 +383,13 @@ def read_infected_by_date_region():
 
 
 if __name__ == '__main__':
-    read_resident_district_age()
-    read_infected_in_district()
-    read_vaccinated_in_district()
-    read_infected_age_and_sex()
-    read_used_vaccines_in_regions()
-    read_vaccinated_in_region()
-    read_vaccinated_in_region()
-    read_infected_age_in_regions()
-    read_infected_by_date_region()
+    # read_resident_district_age()
+    # read_infected_in_district()
+    # read_vaccinated_in_district()
+    # read_infected_age_and_sex()
+    # read_used_vaccines_in_regions()
+    # read_vaccinated_in_region()
+    # read_vaccinated_in_region()
+    # read_infected_age_in_regions()
+    # read_infected_by_date_region()
     read_month_stats()

@@ -4,6 +4,7 @@ import pandas as pd
 import ijson
 import pymongo.collection
 from pymongo import MongoClient
+from pymongo import UpdateOne
 
 client = MongoClient("localhost", 27017)
 
@@ -106,10 +107,37 @@ def csv_insert_to_db(iterable, collection, chunk=100000):
     collection.insert_many(people_chunk)
 
 
+def insert_hospitalized_db(iterable, collection, chunk=100000):
+    data_chunk = []
+    index = 0
+    for item in iterable:
+        if index % chunk == 1:
+            collection.bulk_write(data_chunk)
+            data_chunk.clear()
+        item["_id"] = item.pop("id")
+        fix_date_item(item)
+        data_chunk.append(UpdateOne({"_id": item["_id"]}, {"$set": item}, upsert=True))
+        index += 1
+
+    collection.bulk_write(data_chunk)
+
+
+def hospitalized():
+    print("==========hospitalized statistics==========")
+    collection: pymongo.collection.Collection = client.upa.hospitalized
+
+    url = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/hospitalizace.min.json"
+    f = urlopen(url)
+    people = ijson.items(f, 'data.item')
+    insert_hospitalized_db(people, collection)
+    print("==========completed==========")
+
+
 if __name__ == '__main__':
-    monthly_stats()
-    people_region_infected_stats()
-    people_vaccinated_region_stats()
-    people_vaccinated_all()
-    total_population()
+    # monthly_stats()
+    # people_region_infected_stats()
+    # people_vaccinated_region_stats()
+    # people_vaccinated_all()
+    # total_population()
+    hospitalized()
 
