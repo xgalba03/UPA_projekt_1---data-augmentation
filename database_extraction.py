@@ -92,16 +92,18 @@ def vekova_skupina(row: pd.Series):
 
 
 def read_resident_district_age():
-    data = pd.read_csv("data/rozlozeni-veku-obyvatel.csv")
+    collection: pymongo.collection.Collection = client.upa.districtAgeDistribution
+    data = collection.find({})
+    age = pd.DataFrame(list(data))
+    age = age.rename(columns={"_id": "vek_kod"})
+
     orp_map = pd.read_csv("data/orp-lau.csv")
-    interval_ciselnik = pd.read_csv("data/ciselnik-intervalu.csv")
-    data = pd.merge(data, orp_map, how="left", left_on="vuzemi_kod", right_on="ORP")
-    data = data.groupby(["LAU1", "pohlavi_kod", "vek_kod"])["hodnota"].sum().reset_index()
-    data = pd.merge(data, interval_ciselnik, how="left", left_on="vek_kod", right_on="CHODNOTA")
+    data = pd.merge(age, orp_map, how="left", left_on="vuzemi_kod", right_on="ORP")
+    data = data.groupby(["LAU1", "pohlavi_kod", "vek_kod"]).agg({"pocet":"sum", "pohlavi_txt": "first", "vek_txt": "first", "vuzemi_txt": "first", "ZKRTEXT" : "first", "TEXT": "first","MIN_TUPY" : "first", "MAX_TUPY": "first", "MIN_OSTRY": "first", "MAX_OSTRY": "first"}).reset_index()
     data = data.filter(["LAU1", "pohlavi_kod", "vek_kod", "hodnota", "ZKRTEXT", "TEXT", "MAX_TUPY", "MIN_OSTRY"])
 
     data["vekova_skupina"] = data.apply(vekova_skupina, axis=1)
-    data = data.groupby(["vekova_skupina", "LAU1"])["hodnota"].sum().reset_index()
+    data = data.groupby(["vekova_skupina", "LAU1"])["pocet"].sum().reset_index()
     data = pd.pivot_table(data, values="hodnota", index="LAU1", columns="vekova_skupina", aggfunc=np.sum)
     data.to_csv("csv/district_age_distribution.csv")
 
@@ -392,4 +394,5 @@ if __name__ == '__main__':
     # read_vaccinated_in_region()
     # read_infected_age_in_regions()
     # read_infected_by_date_region()
-    read_month_stats()
+    # read_month_stats()
+    read_resident_district_age()

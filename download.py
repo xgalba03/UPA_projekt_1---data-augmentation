@@ -1,4 +1,5 @@
 import datetime
+import json
 from urllib.request import urlopen
 import pandas as pd
 import ijson
@@ -133,11 +134,26 @@ def hospitalized():
     print("==========completed==========")
 
 
+def age_distribution():
+    print("==========age distribution statistics==========")
+    age = pd.read_csv("data/ciselnik-intervalu.csv").filter(["CHODNOTA", "ZKRTEXT", "TEXT", "MIN_TUPY", "MAX_TUPY", "MIN_OSTRY", "MAX_OSTRY"])
+    df = pd.read_csv("data/rozlozeni-veku-obyvatel.csv").filter(["idhod", "hodnota", "pohlavi_kod", "vek_kod", "vuzemi_kod", "pohlavi_txt", "vek_txt", "vuzemi_txt"])
+    df = df.rename(columns={"idhod": "_id", "hodnota" : "pocet"})
+    df = df.merge(age, left_on="vek_kod", right_on="CHODNOTA").drop(["CHODNOTA", "vek_kod"], axis=1)
+
+    data = json.loads(df.to_json(orient="records"))
+    collection: pymongo.collection.Collection = client.upa.districtAgeDistribution
+    collection.delete_many({})
+    collection.insert_many(data)
+    print("==========completed==========")
+
+
 if __name__ == '__main__':
     # monthly_stats()
     # people_region_infected_stats()
     # people_vaccinated_region_stats()
     # people_vaccinated_all()
     # total_population()
-    hospitalized()
+    # hospitalized()
+    age_distribution()
 
