@@ -398,4 +398,3 @@ if __name__ == '__main__':
     read_infected_age_in_regions()
     read_infected_by_date_region()
     read_month_stats()
-    read_resident_district_age()

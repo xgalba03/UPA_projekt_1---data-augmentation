@@ -14,10 +14,10 @@ def monthly_stats():
     print("==========infected monthly==========")
     url = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/nakazeni-vyleceni-umrti-testy.json"
     collection: pymongo.collection.Collection = client.upa.monthlyStats
-    collection.delete_many({})
 
     f = urlopen(url)
     people = ijson.items(f, 'data.item')
+    collection.delete_many({})
     for person in people:
         fix_date_item(person)
         collection.insert_one(person)
@@ -29,10 +29,10 @@ def people_region_infected_stats():
     print("==========infected in regions==========")
     url = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/osoby.min.json"
     collection: pymongo.collection.Collection = client.upa.peopleRegionInfected
-    collection.delete_many({})
 
     f = urlopen(url)
     people = ijson.items(f, 'data.item')
+    collection.delete_many({})
     insert_to_db(people, collection)
     print("==========completed==========")
 
@@ -40,11 +40,11 @@ def people_region_infected_stats():
 def people_vaccinated_region_stats():
     print("==========vaccinated people in regions==========")
     collection: pymongo.collection.Collection = client.upa.regionVaccinated
-    collection.delete_many({})
 
     url = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/ockovani.min.json"
     f = urlopen(url)
     people = ijson.items(f, 'data.item')
+    collection.delete_many({})
     insert_to_db(people, collection)
     print("==========completed==========")
 
@@ -52,20 +52,20 @@ def people_vaccinated_region_stats():
 def people_vaccinated_all():
     print("==========all vaccinated people==========")
     collection: pymongo.collection.Collection = client.upa.peopleVaccinated
-    collection.delete_many({})
 
     url = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/ockovani-profese.min.json"
     f = urlopen(url)
     people = ijson.items(f, 'data.item')
+    collection.delete_many({})
     insert_to_db(people, collection)
     print("==========completed==========")
 
 def total_population():
     print("==========total population==========")
     collection: pymongo.collection.Collection = client.upa.totalPopulation
-    collection.delete_many({})
 
     data = pd.read_csv('https://www.czso.cz/documents/62353418/143522504/130142-21data043021.csv/760fab9c-d079-4d3a-afed-59cbb639e37d?version=1.1')
+    collection.delete_many({})
     csv_insert_to_db(data.to_dict('records'), collection)
     print("==========completed==========")    
 
