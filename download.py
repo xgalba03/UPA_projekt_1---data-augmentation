@@ -1,9 +1,11 @@
 import datetime
+import json
 from urllib.request import urlopen
 import pandas as pd
 import ijson
 import pymongo.collection
 from pymongo import MongoClient
+from pymongo import UpdateOne
 
 client = MongoClient("localhost", 27017)
 
@@ -106,10 +108,52 @@ def csv_insert_to_db(iterable, collection, chunk=100000):
     collection.insert_many(people_chunk)
 
 
+def insert_hospitalized_db(iterable, collection, chunk=100000):
+    data_chunk = []
+    index = 0
+    for item in iterable:
+        if index % chunk == 1:
+            collection.bulk_write(data_chunk)
+            data_chunk.clear()
+        item["_id"] = item.pop("id")
+        fix_date_item(item)
+        data_chunk.append(UpdateOne({"_id": item["_id"]}, {"$set": item}, upsert=True))
+        index += 1
+
+    collection.bulk_write(data_chunk)
+
+
+def hospitalized():
+    print("==========hospitalized statistics==========")
+    collection: pymongo.collection.Collection = client.upa.hospitalized
+
+    url = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/hospitalizace.min.json"
+    f = urlopen(url)
+    people = ijson.items(f, 'data.item')
+    insert_hospitalized_db(people, collection)
+    print("==========completed==========")
+
+
+def age_distribution():
+    print("==========age distribution statistics==========")
+    age = pd.read_csv("data/ciselnik-intervalu.csv").filter(["CHODNOTA", "ZKRTEXT", "TEXT", "MIN_TUPY", "MAX_TUPY", "MIN_OSTRY", "MAX_OSTRY"])
+    df = pd.read_csv("data/rozlozeni-veku-obyvatel.csv").filter(["idhod", "hodnota", "pohlavi_kod", "vek_kod", "vuzemi_kod", "pohlavi_txt", "vek_txt", "vuzemi_txt"])
+    df = df.rename(columns={"idhod": "_id", "hodnota" : "pocet"})
+    df = df.merge(age, left_on="vek_kod", right_on="CHODNOTA").drop(["CHODNOTA", "vek_kod"], axis=1)
+
+    data = json.loads(df.to_json(orient="records"))
+    collection: pymongo.collection.Collection = client.upa.districtAgeDistribution
+    collection.delete_many({})
+    collection.insert_many(data)
+    print("==========completed==========")
+
+
 if __name__ == '__main__':
     monthly_stats()
     people_region_infected_stats()
     people_vaccinated_region_stats()
     people_vaccinated_all()
     total_population()
+    hospitalized()
+    age_distribution()
 

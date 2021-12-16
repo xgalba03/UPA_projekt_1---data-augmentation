@@ -34,7 +34,8 @@ def plot_monthly_stats():
            "prirustkovy_pocet_nakazenych",
            "prirustkovy_pocet_provedenych_testu",
            "prirustkovy_pocet_umrti",
-           "prirustkovy_pocet_vylecenych"],
+           "prirustkovy_pocet_vylecenych",
+           "hospitalizace"],
         subplots=True,
     )
 
