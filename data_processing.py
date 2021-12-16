@@ -133,6 +133,7 @@ def plot_quarter(quarter, year):
     quarter_data = get_quarter(quarter, year)
     quarter_data = quarter_data.set_index("Název kraje", drop=True)
     quarter_data.rename(columns={"infected/person": "Infikovaných na jednu osobu"})
+    quarter_data = quarter_data.sort_values('infected/person', ascending = False)
 
     ax = quarter_data.plot(figsize=(8, 10), kind="bar", logy=True, y=["nakazenych", "celkovy pocet"], )
     ax.set_ylabel("Počet lidí")
