@@ -1,8 +1,12 @@
+import contextlib
 import datetime
 import json
+import urllib
 from urllib.request import urlopen
 import pandas as pd
 import ijson
+import csv
+import json
 import pymongo.collection
 from pymongo import MongoClient
 from pymongo import UpdateOne
@@ -60,19 +64,37 @@ def people_vaccinated_all():
     insert_to_db(people, collection)
     print("==========completed==========")
 
+
+def people_vaccinated_all_csv():
+    """
+    Json metoda byla z nejakeho duvodu odstranena. Tato metoda je pro vlozeni do databaze pomoci csv.
+    """
+
+    collection: pymongo.collection.Collection = client.upa.peopleVaccinated
+    # for chunk in pd.read_csv("data/ockovani-profese.csv", chunksize=100000):
+    with contextlib.closing(urllib.request.urlopen(url="https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/ockovani-profese.csv")) as reader:
+        for chunk in pd.read_csv(reader, chunksize=100000):
+            chunk = chunk.rename(columns={"id": "_id"})
+            chunk["datum"] = pd.to_datetime(chunk["datum"])
+            dict_data = chunk.to_dict("records")
+            collection.insert_many(dict_data)
+
+
 def total_population():
     print("==========total population==========")
     collection: pymongo.collection.Collection = client.upa.totalPopulation
 
-    data = pd.read_csv('https://www.czso.cz/documents/62353418/143522504/130142-21data043021.csv/760fab9c-d079-4d3a-afed-59cbb639e37d?version=1.1')
+    data = pd.read_csv(
+        'https://www.czso.cz/documents/62353418/143522504/130142-21data043021.csv/760fab9c-d079-4d3a-afed-59cbb639e37d?version=1.1')
     collection.delete_many({})
     csv_insert_to_db(data.to_dict('records'), collection)
-    print("==========completed==========")    
+    print("==========completed==========")
 
 
 def fix_date_item(item):
     date = datetime.date.fromisoformat(item["datum"])
     item["datum"] = datetime.datetime(date.year, date.month, date.day)
+
 
 def fix_csv_date_item(item):
     date = datetime.date.fromisoformat(item["casref_do"])
@@ -84,7 +106,7 @@ def insert_to_db(iterable, collection, chunk=100000):
     index = 0
     for item in iterable:
         if index % chunk == 1:
-            #print(index)
+            # print(index)
             collection.insert_many(people_chunk)
             people_chunk.clear()
         fix_date_item(item)
@@ -93,12 +115,13 @@ def insert_to_db(iterable, collection, chunk=100000):
 
     collection.insert_many(people_chunk)
 
+
 def csv_insert_to_db(iterable, collection, chunk=100000):
     people_chunk = []
     index = 0
     for item in iterable:
         if index % chunk == 1:
-            #print(index)
+            # print(index)
             collection.insert_many(people_chunk)
             people_chunk.clear()
         fix_csv_date_item(item)
@@ -136,9 +159,11 @@ def hospitalized():
 
 def age_distribution():
     print("==========age distribution statistics==========")
-    age = pd.read_csv("data/ciselnik-intervalu.csv").filter(["CHODNOTA", "ZKRTEXT", "TEXT", "MIN_TUPY", "MAX_TUPY", "MIN_OSTRY", "MAX_OSTRY"])
-    df = pd.read_csv("data/rozlozeni-veku-obyvatel.csv").filter(["idhod", "hodnota", "pohlavi_kod", "vek_kod", "vuzemi_kod", "pohlavi_txt", "vek_txt", "vuzemi_txt"])
-    df = df.rename(columns={"idhod": "_id", "hodnota" : "pocet"})
+    age = pd.read_csv("data/ciselnik-intervalu.csv").filter(
+        ["CHODNOTA", "ZKRTEXT", "TEXT", "MIN_TUPY", "MAX_TUPY", "MIN_OSTRY", "MAX_OSTRY"])
+    df = pd.read_csv("data/rozlozeni-veku-obyvatel.csv").filter(
+        ["idhod", "hodnota", "pohlavi_kod", "vek_kod", "vuzemi_kod", "pohlavi_txt", "vek_txt", "vuzemi_txt"])
+    df = df.rename(columns={"idhod": "_id", "hodnota": "pocet"})
     df = df.merge(age, left_on="vek_kod", right_on="CHODNOTA").drop(["CHODNOTA", "vek_kod"], axis=1)
 
     data = json.loads(df.to_json(orient="records"))
@@ -152,8 +177,8 @@ if __name__ == '__main__':
     monthly_stats()
     people_region_infected_stats()
     people_vaccinated_region_stats()
-    people_vaccinated_all()
+    # people_vaccinated_all()
     total_population()
     hospitalized()
     age_distribution()
-
+    people_vaccinated_all_csv()
