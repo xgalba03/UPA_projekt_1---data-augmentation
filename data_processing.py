@@ -115,13 +115,14 @@ def print_best_in_covid():
     """
     Prints covid region rating for 4 quarters
     """
+    print_quarter_rating(4, 2020)
+    print()
     print_quarter_rating(3, 2021)
     print()
     print_quarter_rating(2, 2021)
     print()
     print_quarter_rating(1, 2021)
-    print()
-    print_quarter_rating(3, 2020)
+
 
 
 def plot_quarter(quarter, year):
@@ -184,7 +185,7 @@ if __name__ == '__main__':
     plot_monthly_stats()
     plot_infected_in_region_age()
     print_best_in_covid()
-    plot_quarter(3, 2020)
+    plot_quarter(4, 2020)
     plot_region_vaccinate_percentage()
     plot_used_vaccines_in_regions()
     plot_age_sex()
