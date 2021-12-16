@@ -3,10 +3,8 @@ import datetime
 import json
 import urllib
 from urllib.request import urlopen
-import pandas as pd
 import ijson
-import csv
-import json
+import pandas as pd
 import pymongo.collection
 from pymongo import MongoClient
 from pymongo import UpdateOne
